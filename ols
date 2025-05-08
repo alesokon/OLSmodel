@@ -1,0 +1,36 @@
+import pandas as pd
+import statsmodels.api as sm
+
+def main():
+    """
+    Tento skript načte data z českého CSV souboru s hlavičkou sloupců,
+    odhadne lineární regresi ROA na ESG a dummy proměnné pomocí MNČ
+    a následně přepočte robustní (Whiteovy) standardní chyby a p‑hodnoty.
+    """
+
+    # 1) Načtení CSV souboru (předpokládá se oddělovač ';' a kódování UTF-8)
+    df = pd.read_csv('data.csv', sep=';', encoding='utf-8')
+
+    # 2) Kontrola názvů sloupců
+    # Předpokládá se, že CSV obsahuje sloupce: ROA, ESG, D_Střední, D_Malý, D_Mikro
+    expected = {'ROA', 'ESG', 'D_Střední', 'D_Malý', 'D_Mikro'}
+    missing = expected - set(df.columns)
+    if missing:
+        raise ValueError(f"Následující očekávané sloupce chybí v CSV: {missing}")
+
+    # 3) Příprava matice vysvětlujících proměnných X a vektoru závislé proměnné y
+    X = df[['ESG', 'D_Střední', 'D_Malý', 'D_Mikro']]
+    X = sm.add_constant(X)  # přidání interceptu
+    y = df['ROA']
+
+    # 4) Odhad OLS
+    model = sm.OLS(y, X).fit()
+
+    # 5) Přepočet robustních standardních chyb (Whiteovy SE, HC0)
+    robust_results = model.get_robustcov_results(cov_type='HC0')
+
+    # 6) Výpis shrnutí výsledků s robustními SE
+    print(robust_results.summary())
+
+if __name__ == '__main__':
+    main()
